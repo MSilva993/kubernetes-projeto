@@ -127,4 +127,6 @@ Para fins de avaliação, recomenda-se registrar:
 
 ## Status do Projeto
 
-A solução está concluída e funcional, com ambos os servidores implantados, acessíveis e executando corretamente em um cluster Kubernetes local.
+# A solução está concluída e funcional, com ambos os servidores implantados, acessíveis e executando corretamente em um cluster Kubernetes local.
+
+# kubernetes-projeto
