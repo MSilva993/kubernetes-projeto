@@ -2,131 +2,209 @@
 
 Este repositório apresenta uma solução prática de orquestração de containers utilizando Kubernetes. O objetivo é demonstrar a implantação de dois servidores web — Nginx e Apache HTTPD — executando simultaneamente em um cluster local via Minikube, cada um exposto em portas distintas conforme o desafio proposto.
 
----
+O projeto inclui:
 
-## Objetivo do Projeto
-
-A solução implementada busca atender aos seguintes pontos:
-• Implantar dois servidores web independentes (Nginx e Apache) em um cluster Kubernetes.
-• Criar Deployments com múltiplas réplicas para garantir disponibilidade.
-• Expor cada aplicação por meio de Services do tipo NodePort.
-• Validar o funcionamento do cluster Minikube utilizando o driver Docker.
-• Demonstrar o uso de arquivos YAML para definição de recursos Kubernetes.
-• Reforçar o uso de ferramentas essenciais no ciclo de vida de aplicações containerizadas.
+- Criação de imagens personalizadas
+- Deployments e Services completos em YAML
+- Execução e validação no cluster
+- Evidências de funcionamento
+- Estrutura final organizada para fácil manutenção
 
 ---
 
-## Arquitetura do Projeto
+## 1. Pré-requisitos
 
-O projeto contém quatro arquivos YAML responsáveis pela criação dos recursos:
-
-- nginx-deployment.yaml
-- nginx-service.yaml
-- apache-deployment.yaml
-- apache-service.yaml
-
-Cada Deployment cria duas réplicas da aplicação.  
-Cada Service utiliza o tipo NodePort para permitir acesso externo.
-Portas definidas conforme o desafio:
-
-- Nginx exposto na porta 30080
-- Apache exposto na porta 30081
+- Docker instalado
+- Minikube instalado
+- Kubectl configurado
+- VS Code (opcional, mas recomendado)
 
 ---
 
-## Requisitos do Ambiente
+## 2. Criação das Imagens Personalizadas
 
-Para executar o projeto, é necessário ter instalado:
+### Estrutura das pastas
 
-- Docker Desktop (Engine Running)
-- Minikube
-- Kubectl
-- WSL 2 atualizado
-- Windows 11
-- VS Code
+apache-custom/
+nginx-custom/
+
+Cada pasta contém:
+
+- index.html personalizado
+- Dockerfile responsável por copiar o HTML para o servidor
+
+### Dockerfile – Apache
+
+FROM httpd:latest
+COPY index.html /usr/local/apache2/htdocs/index.html
+
+### Dockerfile – Nginx
+
+FROM nginx:latest
+COPY index.html /usr/share/nginx/html/index.html
 
 ---
 
-## Como Executar o Projeto
+## 3. Construção das Imagens e Carregamento no Minikube
 
-1. Inicie o Minikube utilizando o driver Docker:
+docker build -t apache-custom .
+docker build -t nginx-custom .
 
-minikube start --driver=docker
+minikube image load apache-custom
+minikube image load nginx-custom
 
-2. Aplique todos os arquivos YAML:
+---
+
+## 4. Deployments (YAML Completo)
+
+### apache-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: apache-deployment
+labels:
+app: apache
+spec:
+replicas: 2
+selector:
+matchLabels:
+app: apache
+template:
+metadata:
+labels:
+app: apache
+spec:
+containers: - name: apache
+image: apache-custom:latest
+imagePullPolicy: Never
+ports: - containerPort: 80
+resources:
+limits:
+cpu: "500m"
+memory: "256Mi"
+requests:
+cpu: "250m"
+memory: "128Mi"
+
+### nginx-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: nginx-deployment
+labels:
+app: nginx
+spec:
+replicas: 2
+selector:
+matchLabels:
+app: nginx
+template:
+metadata:
+labels:
+app: nginx
+spec:
+containers: - name: nginx
+image: nginx-custom:latest
+imagePullPolicy: Never
+ports: - containerPort: 80
+resources:
+limits:
+cpu: "500m"
+memory: "256Mi"
+requests:
+cpu: "250m"
+memory: "128Mi"
+
+---
+
+## 5. Services (YAML Completo)
+
+### apache-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+name: apache-service
+labels:
+app: apache
+spec:
+type: NodePort
+selector:
+app: apache
+ports: - name: http
+port: 80
+targetPort: 80
+nodePort: 30081
+
+### nginx-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+name: nginx-service
+labels:
+app: nginx
+spec:
+type: NodePort
+selector:
+app: nginx
+ports: - name: http
+port: 80
+targetPort: 80
+nodePort: 30080
+
+---
+
+## 6. Aplicação dos Arquivos no Cluster
 
 kubectl apply -f .
 
-3. Verifique se os pods estão em execução:
-
 kubectl get pods
-
-4. Verifique os serviços criados:
-
 kubectl get svc
 
 ---
 
-## Acesso aos Serviços
-
-### Importante sobre o driver Docker
-
-Quando o Minikube utiliza o driver Docker, as portas NodePort não são expostas diretamente no localhost.
-Portanto, acessar:
-
-- http://localhost:30080
-- http://localhost:30081
-  não funciona.
-
-### Forma correta de acessar
-
-Utilize:
+## 7. Acesso aos Serviços
 
 minikube service nginx-service
 minikube service apache-service
 
-O Minikube abrirá automaticamente o navegador com um endereço no formato:
-
-- 127.0.0.1:xxxxx para Nginx
-- 127.0.0.1:xxxxx para Apache
-
-Essas portas são dinâmicas e podem mudar a cada execução.
-
-### Motivo técnico
-
-- O driver Docker não expõe NodePorts diretamente no host.
-- O Minikube cria um túnel interno para acesso.
-- O comando minikube service identifica e abre a porta correta.
-  Esse comportamento é esperado e faz parte do funcionamento do Minikube com o driver Docker.
-
 ---
 
-## Estrutura do Repositório
+## 8. Estrutura Final do Repositório
 
 kubernetes-projeto/
 │
-├── nginx-deployment.yaml
-├── nginx-service.yaml
+├── apache-custom/
+│ ├── Dockerfile
+│ └── index.html
+│
+├── nginx-custom/
+│ ├── Dockerfile
+│ └── index.html
+│
 ├── apache-deployment.yaml
 ├── apache-service.yaml
+├── nginx-deployment.yaml
+├── nginx-service.yaml
+│
 └── README.md
 
 ---
 
-## Evidências Recomendadas
+## 9. Evidências
 
-Para fins de avaliação, recomenda-se registrar:
-
-- Execução do comando minikube start
-- Aplicação dos manifestos com kubectl apply -f .
-- Listagem dos pods em execução
-- Listagem dos serviços criados
-- Acesso às páginas Nginx e Apache via minikube service
+- Página Nginx funcionando
+- Página Apache funcionando
+- Pods listados
+- Services listados
 
 ---
 
-## Status do Projeto
+## 10. Conclusão
 
-# A solução está concluída e funcional, com ambos os servidores implantados, acessíveis e executando corretamente em um cluster Kubernetes local.
+O projeto demonstrou a implantação de dois serviços web utilizando Kubernetes e Minikube, reforçando conceitos de conteinerização, criação de imagens personalizadas, definição de Deployments e Services, além da validação prática do funcionamento dos pods e serviços expostos. A estrutura final do repositório segue boas práticas de DevOps, garantindo clareza e fácil manutenção.
 
-# kubernetes-projeto
+---
