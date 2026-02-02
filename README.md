@@ -199,8 +199,6 @@ minikube service apache-service
 
 ## 8. Estrutura Final do Repositório
 
-## 8. Estrutura Final do Repositório
-
 ```
 kubernetes-projeto/
 │
